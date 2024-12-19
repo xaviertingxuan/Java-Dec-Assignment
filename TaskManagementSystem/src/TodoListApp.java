@@ -1,8 +1,14 @@
 import java.util.ArrayList;
 import java.util.Scanner;
 
-// Task Class
-class Task {
+// Define an interface for Task operations
+interface TaskOperations {
+    void update(String title, String description);
+    String getDetails();
+}
+
+// Base class for common task attributes
+abstract class Task implements TaskOperations {
     private int id;
     private String title;
     private String description;
@@ -17,29 +23,42 @@ class Task {
         return id;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setTitle(String title) {
+    @Override
+    public void update(String title, String description) {
         this.title = title;
-    }
-
-    public void setDescription(String description) {
         this.description = description;
     }
 
     @Override
-    public String toString() {
+    public String getDetails() {
         return "Task ID: " + id + ", Title: " + title + ", Description: " + description;
     }
 }
 
-// Main CRUD Application
+// Subclass for TodoTask
+class TodoTask extends Task {
+    private double priority; // Example of a double variable
+
+    public TodoTask(int id, String title, String description, double priority) {
+        super(id, title, description);
+        this.priority = priority;
+    }
+
+    public double getPriority() {
+        return priority;
+    }
+
+    public void setPriority(double priority) {
+        this.priority = priority;
+    }
+
+    @Override
+    public String getDetails() {
+        return super.getDetails() + ", Priority: " + priority;
+    }
+}
+
+// Main application
 public class TodoListApp {
     private static ArrayList<Task> tasks = new ArrayList<>();
     private static int taskIdCounter = 1;
@@ -60,30 +79,18 @@ public class TodoListApp {
             scanner.nextLine(); // Consume newline character
 
             switch (choice) {
-                case 1:
-                    createTask(scanner);
-                    waitForUserInput(scanner);
-                    break;
-                case 2:
-                    viewTasks(scanner);
-                    break;
-                case 3:
-                    updateTask(scanner);
-                    waitForUserInput(scanner);
-                    break;
-                case 4:
-                    deleteTask(scanner);
-                    waitForUserInput(scanner);
-                    break;
-                case 5:
+                case 1 -> createTask(scanner);
+                case 2 -> viewTasks();
+                case 3 -> updateTask(scanner);
+                case 4 -> deleteTask(scanner);
+                case 5 -> {
                     System.out.println("Exiting the application. Goodbye!");
                     scanner.close();
                     System.exit(0);
-                    break;
-                default:
-                    System.out.println("Invalid choice. Please try again.");
-                    waitForUserInput(scanner);
+                }
+                default -> System.out.println("Invalid choice. Please try again.");
             }
+            waitForUserInput(scanner);
         }
     }
 
@@ -92,22 +99,23 @@ public class TodoListApp {
         String title = scanner.nextLine();
         System.out.print("Enter task description: ");
         String description = scanner.nextLine();
-
-        Task newTask = new Task(taskIdCounter++, title, description);
+        System.out.print("Enter task priority (1.0 - 5.0) 1.0 being highest priority: ");
+        double priority = scanner.nextDouble();
+        scanner.nextLine(); // Consume newline character
+        Task newTask = new TodoTask(taskIdCounter++, title, description, priority);
         tasks.add(newTask);
-        System.out.println("Task added successfully: " + newTask);
+        System.out.println("Task added successfully: " + newTask.getDetails());
     }
 
-    private static void viewTasks(Scanner scanner) {
+    private static void viewTasks() {
         if (tasks.isEmpty()) {
             System.out.println("No tasks available.");
         } else {
             System.out.println("\nCurrent Tasks:");
             for (Task task : tasks) {
-                System.out.println(task);
+                System.out.println(task.getDetails());
             }
         }
-        waitForUserInput(scanner);
     }
 
     private static void updateTask(Scanner scanner) {
@@ -115,24 +123,27 @@ public class TodoListApp {
             System.out.println("No tasks available to update.");
             return;
         }
-
         System.out.print("Enter the task ID to update: ");
         int id = scanner.nextInt();
         scanner.nextLine(); // Consume newline character
 
-        for (Task task : tasks) {
-            if (task.getId() == id) {
-                System.out.print("Enter new task title: ");
-                String newTitle = scanner.nextLine();
-                System.out.print("Enter new task description: ");
-                String newDescription = scanner.nextLine();
-                task.setTitle(newTitle);
-                task.setDescription(newDescription);
-                System.out.println("Task updated successfully: " + task);
-                return;
+        Task task = findTaskById(id);
+        if (task != null) {
+            System.out.print("Enter new task title: ");
+            String newTitle = scanner.nextLine();
+            System.out.print("Enter new task description: ");
+            String newDescription = scanner.nextLine();
+            if (task instanceof TodoTask) {
+                System.out.print("Enter new task priority: ");
+                double newPriority = scanner.nextDouble();
+                scanner.nextLine(); // Consume newline character
+                ((TodoTask) task).setPriority(newPriority);
             }
+            task.update(newTitle, newDescription);
+            System.out.println("Task updated successfully: " + task.getDetails());
+        } else {
+            System.out.println("Task with ID " + id + " not found.");
         }
-        System.out.println("Task with ID " + id + " not found.");
     }
 
     private static void deleteTask(Scanner scanner) {
@@ -140,18 +151,21 @@ public class TodoListApp {
             System.out.println("No tasks available to delete.");
             return;
         }
-
         System.out.print("Enter the task ID to delete: ");
         int id = scanner.nextInt();
+        scanner.nextLine(); // Consume newline character
 
-        for (Task task : tasks) {
-            if (task.getId() == id) {
-                tasks.remove(task);
-                System.out.println("Task deleted successfully.");
-                return;
-            }
+        Task task = findTaskById(id);
+        if (task != null) {
+            tasks.remove(task);
+            System.out.println("Task deleted successfully.");
+        } else {
+            System.out.println("Task with ID " + id + " not found.");
         }
-        System.out.println("Task with ID " + id + " not found.");
+    }
+
+    private static Task findTaskById(int id) {
+        return tasks.stream().filter(task -> task.getId() == id).findFirst().orElse(null);
     }
 
     private static void waitForUserInput(Scanner scanner) {
